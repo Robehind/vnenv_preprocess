@@ -49,6 +49,7 @@ with open(os.path.join(dataDir,"graph.json"), "r") as f:
 graph = json_graph_loader.node_link_graph(graph_json).to_directed()
 #load the images.hdf5
 images = h5py.File(os.path.join(dataDir,"images.hdf5"), "r")
+tmp = h5py.File(os.path.join(dataDir,"tensorimages128.hdf5"), "r")
 #fcs = h5py.File(os.path.join(dataDir,"resnet50_fc.hdf5"), "r")
 #load the grid.json
 with open(os.path.join(dataDir,"grid.json"), "r") as f:
@@ -63,6 +64,7 @@ press_key = 1
 while press_key != 27:
 
     pic = images[poskey][:]
+    print(tmp[poskey][:].shape)
     #print(fcs[poskey][:])
     #RGB to BGR
     pic = pic[:,:,::-1]

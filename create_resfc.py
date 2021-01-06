@@ -68,10 +68,10 @@ for p in resnet50_s.parameters():
 resnet50_s.eval()
 
 test_scenes = {
-        'kitchen':range(16,31),
-        'living_room':range(16,31),
-        'bedroom':range(16,31),
-        'bathroom':range(16,31),
+        'kitchen':range(1,31),
+        'living_room':range(1,31),
+        'bedroom':range(1,31),
+        'bathroom':range(1,31),
     }
 
 scene_names = get_scene_names(test_scenes)

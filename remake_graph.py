@@ -88,7 +88,7 @@ def remake_graph(scene_name, data_name):
     write_to_json(data, save_str)
 
 test_scenes = {
-        'kitchen':[29],
+        'kitchen':[25],
         #'living_room':range(21,31),
         #'bedroom':range(21,31),
         #'bathroom':range(21,31),

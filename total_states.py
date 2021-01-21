@@ -2,6 +2,9 @@ import h5py
 import os
 from tqdm import tqdm
 
+#os.environ["MKL_NUM_THREADS"] = '4'
+#os.environ["NUMEXPR_NUM_THREADS"] = '4'
+os.environ["OMP_NUM_THREADS"] = '1'
 def get_scene_names(train_scenes):
     
     return [
@@ -31,3 +34,12 @@ def states_num(scenes, datadir= '../mixed_offline_data/', preload = 'images.hdf5
         pbar.update(1)
         RGBloader.close()
     return count
+
+if __name__ == "__main__":
+    scenes = {
+        'kitchen':range(1,31),
+        'living_room':range(1,31),
+        'bedroom':range(1,31),
+        'bathroom':range(1,31),
+    }
+    states_num(scenes, preload='images.hdf5')

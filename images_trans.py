@@ -8,7 +8,7 @@ from total_states import states_num, get_scene_names, make_scene_name
 
 datadir = '../mixed_offline_data/'
 data_name = 'images.hdf5'
-new_data_name = 'tensorimages128.hdf5'
+new_data_name = 'normal_tensor128.hdf5'
 test_scenes = {
         'kitchen':range(1,31),
         'living_room':range(1,31),
@@ -21,7 +21,8 @@ scene_names = get_scene_names(test_scenes)
 trans = T.Compose([
     T.ToPILImage(),
     T.Resize((128,128)),
-    T.ToTensor()
+    #T.ToTensor(),
+    #T.Normalize(mean=[0.5114, 0.4435, 0.3569],std=[0.0537, 0.0553, 0.0566],inplace=True)
 ])
 
 pbar = tqdm(total = states_num(test_scenes, preload=data_name))

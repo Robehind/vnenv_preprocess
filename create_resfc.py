@@ -1,42 +1,51 @@
 import torchvision.models as models
-from torchvision import transforms
+from torchvision import transforms as T
 import torch.nn as nn
 import torch
 import h5py
 import os
 from tqdm import tqdm
 import random
+from total_states import states_num, get_scene_names, make_scene_name 
+from mean_std import get_mean_std
+from models import my_resnet50
 """生成新的fc和fc score文件"""
-def get_scene_names(train_scenes):
+
+scenes = {
+        'kitchen':range(1,21),
+        'living_room':range(1,21),
+        'bedroom':range(1,21),
+        'bathroom':range(1,21),
+    }
+image_name = 'images.hdf5'
+datadir = '../mixed_offline_data/'
+fc_name = 'resnet50fc.hdf5'
+score_name = 'resnet50score'
+
+trans = T.Compose([
+    T.ToTensor(),
+    T.Normalize(mean=[0.5265, 0.4560, 0.3682],std=[0.0540, 0.0554, 0.0567],inplace=True)
+])
+scene_names = get_scene_names(scenes)
+resmodel = my_resnet50().cuda()
+print(f'making for {len(scene_names)} scenes')
     
-    return [
-        make_scene_name(k, i) for k in train_scenes.keys() for i in train_scenes[k]
-    ]
+pbar = tqdm(total = states_num(scenes, preload=image_name))
+for scene_name in scene_names:
 
-def make_scene_name(scene_type, num):
-    mapping = {"kitchen":'', "living_room":'2', "bedroom":'3', "bathroom":'4'}
-    front = mapping[scene_type]
-    endd = '_physics' if (front == '' or front == '2') else ''
-    if num >= 10 or front == '':
-        return "FloorPlan" + front + str(num) + endd
-    return "FloorPlan" + front + "0" + str(num) + endd
-
-def make_fc_score(scene_name):
-    #print("making ",scene_name)
-    datadir = '../mixed_offline_data/'
-
-    fc_writer = h5py.File(os.path.join(datadir,scene_name,'resnet50_fc_new.hdf5'), 'w')
-    score_writer = h5py.File(os.path.join(datadir,scene_name,'resnet50_score.hdf5'), 'w')
-    RGBloader = h5py.File(os.path.join(datadir,scene_name,'images.hdf5'),"r",)
+    fc_writer = h5py.File(os.path.join(datadir,scene_name,fc_name), 'w')
+    score_writer = h5py.File(os.path.join(datadir,scene_name,score_name), 'w')
+    RGBloader = h5py.File(os.path.join(datadir,scene_name,image_name),"r",)
     
     for k in RGBloader.keys():
         pbar.update(1)
         x = RGBloader[k][:]
-        x = transforms.ToTensor()(x).unsqueeze(0)
+        x = trans(x).unsqueeze(0)
         x = x.cuda()
+        out = resmodel(x)
 
-        resnet_fc = resnet50_fc(x).squeeze()
-        resnet_s = resnet50_s(resnet_fc).squeeze()
+        resnet_fc = out['fc']
+        resnet_s = out['s']
         #print(resnet_score.shape)
         fc_writer.create_dataset(k, data = resnet_fc.cpu().numpy())
         score_writer.create_dataset(k, data = resnet_s.cpu().numpy())
@@ -45,46 +54,3 @@ def make_fc_score(scene_name):
     RGBloader.close()
     fc_writer.close()
     score_writer.close()
-    #print(resnet_score)
-
-resnet50 = models.resnet50(pretrained=True)
-#resnet50 = resnet50.cuda()
-for p in resnet50.parameters():
-    p.requires_grad = False
-resnet50.eval()
-
-resnet50_fc = list(resnet50.children())[:-1]
-resnet50_fc = nn.Sequential(*resnet50_fc)
-resnet50_fc = resnet50_fc.cuda()
-for p in resnet50_fc.parameters():
-    p.requires_grad = False
-resnet50_fc.eval()
-
-resnet50_s = list(resnet50.children())[-1:]
-resnet50_s = nn.Sequential(*resnet50_s)
-resnet50_s = resnet50_s.cuda()
-for p in resnet50_s.parameters():
-    p.requires_grad = False
-resnet50_s.eval()
-
-test_scenes = {
-        'kitchen':range(1,31),
-        'living_room':range(1,31),
-        'bedroom':range(1,31),
-        'bathroom':range(1,31),
-    }
-
-scene_names = get_scene_names(test_scenes)
-print(f'making for {len(scene_names)} scenes')
-
-count=0
-for s in scene_names:
-    RGBloader = h5py.File(os.path.join('../mixed_offline_data/',s,'images.hdf5'),"r",)
-    num = len(list(RGBloader.keys()))
-    #print(num)
-    count += num
-    RGBloader.close()
-    
-pbar = tqdm(total = count)
-for n in scene_names:
-    make_fc_score(n)

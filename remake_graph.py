@@ -7,11 +7,11 @@ import networkx as nx
 """通过trans.json重制一个基于nx的图，用于算最短路"""
 action_dict = {
         'MoveAhead':['m0'],
-        'TurnLeft':['r-90'],
-        'TurnRight':['r90'],
+        'TurnLeft':['r-45'],
+        'TurnRight':['r45'],
     }
-new_graphdata_name = 'threeACT_graph.json'
-rotate_angle = 90
+new_graphdata_name = 'nop_graph.json'
+rotate_angle = 45
 horizons = [0]
 rotations = [x*rotate_angle for x in range(0,360//rotate_angle)]
 move_list = [0, 1, 1, 1, 0, -1, -1, -1]
@@ -88,10 +88,10 @@ def remake_graph(scene_name, data_name):
     write_to_json(data, save_str)
 
 test_scenes = {
-        'kitchen':[25],
-        #'living_room':range(21,31),
-        #'bedroom':range(21,31),
-        #'bathroom':range(21,31),
+        'kitchen':range(1,21),
+        'living_room':range(1,21),
+        'bedroom':range(1,21),
+        'bathroom':range(1,21),
     }
 
 scene_names = get_scene_names(test_scenes)

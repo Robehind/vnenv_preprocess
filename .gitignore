@@ -1,2 +1,3 @@
-models
+trained_models
 test*
+__pycache__

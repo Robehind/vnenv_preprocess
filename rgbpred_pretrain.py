@@ -9,47 +9,8 @@ from total_states import states_num, get_scene_names, make_scene_name
 import random
 import numpy as np
 from tensorboardX import SummaryWriter
-
-class Encoder(nn.Module):
-    def __init__(self):
-        super(Encoder, self).__init__()
-
-        self.net = nn.Sequential(
-            nn.Conv2d(3, 32, 7, 4, padding=3),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(32, 64, 3, 1, padding=1),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2,2),
-            nn.Conv2d(64, 128, 3, 1, padding=1),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2,2),
-            nn.Conv2d(128, 128, 3, 1, padding=1),
-            nn.ReLU(inplace=True),
-            nn.AvgPool2d(2,2),
-            #nn.Flatten()
-            )
-
-    def forward(self, input_):
-        return self.net(input_)
-
-class Decoder(nn.Module):
-    def __init__(self):
-        super(Decoder, self).__init__()
-        self.net = nn.Sequential(
-            nn.Upsample(scale_factor=(2,2),mode='bilinear',align_corners=True),
-            nn.Conv2d(128, 128, 3, 1, padding=1),
-            nn.ReLU(inplace=True),
-            nn.Upsample(scale_factor=(2,2),mode='bilinear',align_corners=True),
-            nn.Conv2d(128, 64, 3, 1, padding=1),
-            nn.ReLU(inplace=True),
-            nn.Upsample(scale_factor=(2,2),mode='bilinear',align_corners=True),
-            nn.Conv2d(64, 32, 3, 1, padding=1),
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(32, 3, 4, 4),
-            nn.ReLU(inplace=True),
-            )
-    def forward(self, input_):
-        return self.net(input_)
+from models import Encoder
+from models import Decoder1
 
 #######################training##################################
 datadir = '../mixed_offline_data/'
@@ -60,35 +21,42 @@ test_scenes = {
         'bedroom':range(1,16),
         'bathroom':range(1,16),
     }
-path_to_save = '.'
+path_to_save = './trained_models/rgbencode4'
 print_freq = 10000
-save_freq = 1e7
+save_freq = 1e6
 batch_size = 64
-total_frames = 1e8
+total_frames = 1e7
 
 if not os.path.exists(path_to_save):
     os.makedirs(path_to_save)
 scene_names = get_scene_names(test_scenes)
 
 enc = Encoder().cuda()
-dec = Decoder().cuda()
+dec = Decoder1().cuda()
 
 model = nn.Sequential(
     enc,
     dec,
 )
 
-optim = torch.optim.Adam(model.parameters(), lr = 0.0007)
+optim = torch.optim.Adam(model.parameters(), lr = 0.0001)
 
-log_writer = SummaryWriter(log_dir = '.')
+log_writer = SummaryWriter(log_dir = path_to_save)
 
 n_frames = 0
 print_gate_frames = print_freq
 save_gate_frames = save_freq
 loss_record = 0
 count = 0
-
-
+Normalize = T.Normalize(
+    mean=[0.5269, 0.4565, 0.3687], 
+    std=[0.0540, 0.0554, 0.0567], 
+    inplace=True
+    )
+trans = T.Compose([
+    T.ToTensor(),
+    #Normalize
+])
 pbar = tqdm(total=total_frames)
 while 1:
 
@@ -103,13 +71,12 @@ while 1:
         batch_keys = [keys[i*batch_size:(i+1)*batch_size] for i in range(runs)]
         for i in range(runs):
             #####输入128，128，3的255图像时
-            data = np.array([loader[x] for x in batch_keys[i]])
-            data = torch.tensor(data).to(torch.float32).permute(0,3,1,2).cuda()
-            data = data / 255.
-            #data = T.ToTensor()(data).cuda()
+            data = torch.stack([trans(loader[x][:]) for x in batch_keys[i]])
+            data = data.cuda()
+
             out = model(data)
-            loss = F.smooth_l1_loss(out, data.detach())
-            loss_record += loss.cpu().item()
+            loss = F.l1_loss(out, data.detach(), reduction='sum')
+            loss_record += loss.cpu().item()/batch_size
             count+=1
             loss.backward()
             optim.step()
@@ -145,7 +112,7 @@ while 1:
                 )
                 torch.save(all_to_save, save_path)
             
-            if n_frames > total_frames:
+            if n_frames >= total_frames:
                 loader.close()
                 exit()
         loader.close()

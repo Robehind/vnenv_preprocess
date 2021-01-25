@@ -9,8 +9,8 @@ from total_states import states_num, get_scene_names, make_scene_name
 import random
 import numpy as np
 from tensorboardX import SummaryWriter
-from models import Encoder
-from models import Decoder1
+from models import Encoder1 as ENC
+from models import Decoder1 as DEC
 
 #######################training##################################
 datadir = '../mixed_offline_data/'
@@ -21,25 +21,25 @@ test_scenes = {
         'bedroom':range(1,16),
         'bathroom':range(1,16),
     }
-path_to_save = './trained_models/rgbencode4'
+path_to_save = './trained_models/rgbencode1'
 print_freq = 10000
-save_freq = 1e6
+save_freq = 2e6
 batch_size = 64
-total_frames = 1e7
+total_frames = 3e7
 
 if not os.path.exists(path_to_save):
     os.makedirs(path_to_save)
 scene_names = get_scene_names(test_scenes)
 
-enc = Encoder().cuda()
-dec = Decoder1().cuda()
+enc = ENC().cuda()
+dec = DEC().cuda()
 
 model = nn.Sequential(
     enc,
     dec,
 )
 
-optim = torch.optim.Adam(model.parameters(), lr = 0.0001)
+optim = torch.optim.Adam(model.parameters(), lr = 0.0002, betas=(0.5,0.999))
 
 log_writer = SummaryWriter(log_dir = path_to_save)
 
@@ -73,6 +73,8 @@ while 1:
             #####输入128，128，3的255图像时
             data = torch.stack([trans(loader[x][:]) for x in batch_keys[i]])
             data = data.cuda()
+            #label = torch.stack([T.ToTensor()(loader[x][:]) for x in batch_keys[i]])
+            #label = label.cuda()
 
             out = model(data)
             loss = F.l1_loss(out, data.detach(), reduction='sum')
@@ -116,7 +118,3 @@ while 1:
                 loader.close()
                 exit()
         loader.close()
-
-
-        
-
